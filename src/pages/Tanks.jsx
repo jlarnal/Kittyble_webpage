@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import { useApi } from '../hooks/useApi'
 
 export function Tanks() {
-  const { data, updateTank } = useApi()
+  const { data, updateTank, toHexUid } = useApi()
   const [editing, setEditing] = useState(null)
   
   const [form, setForm] = useState({})
@@ -13,7 +13,7 @@ export function Tanks() {
   }
 
   const save = async () => {
-    await updateTank(editing, { name: form.name, density: Number(form.density) })
+    await updateTank(editing, { name: form.name, density: Number(form.density), capacity: Number(form.capacity) })
     setEditing(null)
   }
 
@@ -25,7 +25,7 @@ export function Tanks() {
         <div key={tank.uid} className="card">
           <div className="flex justify-between items-start mb-3">
              <div className="flex items-center gap-2">
-                <span className="text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-300">Slot {tank.slot}</span>
+                <span className="text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-300">Slot {tank.busIndex}</span>
              </div>
              {editing !== tank.uid && (
                  <button onClick={() => startEdit(tank)} className="text-accent-primary text-sm font-semibold">Edit</button>
@@ -40,11 +40,15 @@ export function Tanks() {
               </div>
               {/* UID Display in Edit Mode */}
               <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest text-center py-1">
-                UID: {tank.uid}
+                UID: {toHexUid(tank.uid)}
               </div>
               <div>
                  <label className="text-xs text-gray-400">Density (g/L)</label>
                  <input type="number" className="input" value={form.density} onInput={e => setForm({...form, density: e.target.value})} />
+              </div>
+              <div>
+                 <label className="text-xs text-gray-400">Capacity (L)</label>
+                 <input type="number" step="0.1" className="input" value={form.capacity} onInput={e => setForm({...form, capacity: e.target.value})} />
               </div>
               <div className="flex gap-2">
                 <button onClick={save} className="btn btn-primary flex-1 py-2">Save</button>
@@ -54,9 +58,9 @@ export function Tanks() {
           ) : (
             <div>
                <h3 className="text-lg font-bold leading-tight">{tank.name}</h3>
-               {/* Updated: Hex UID Subtitle */}
+               {/* Hex UID Subtitle */}
                <div className="text-[10px] font-mono text-gray-600 uppercase tracking-wide mb-3">
-                 {tank.uid}
+                 {toHexUid(tank.uid)}
                </div>
 
                <div className="grid grid-cols-2 gap-2 text-xs">
@@ -66,7 +70,7 @@ export function Tanks() {
                  </div>
                  <div className="bg-dark-surface p-2 rounded">
                     <span className="text-gray-500 block">Capacity</span>
-                    <span className="font-mono text-white">{tank.capacity} mL</span>
+                    <span className="font-mono text-white">{tank.capacity} L</span>
                  </div>
                </div>
             </div>

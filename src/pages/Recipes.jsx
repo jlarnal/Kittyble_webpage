@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import { useApi } from '../hooks/useApi'
 
 export function Recipes() {
-  const { data, updateRecipe, deleteRecipe } = useApi()
+  const { data, updateRecipe, deleteRecipe, toHexUid } = useApi()
   const [editorOpen, setEditorOpen] = useState(false)
   const [current, setCurrent] = useState(null)
 
@@ -69,9 +69,9 @@ export function Recipes() {
                         }}
                     >
                         {data.tanks.map(t => (
-                            // Updated: UID in Dropdown
+                            // Hex UID in Dropdown
                             <option key={t.uid} value={t.uid}>
-                                {t.name} (Slot {t.slot}) - {t.uid.substring(0,6)}...
+                                {t.name} (Slot {t.busIndex}) - {toHexUid(t.uid).substring(0,8)}...
                             </option>
                         ))}
                     </select>

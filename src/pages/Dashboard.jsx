@@ -1,7 +1,7 @@
 import { useApi } from '../hooks/useApi'
 
 export function Dashboard() {
-  const { data, stopFeed, feedImmediate } = useApi()
+  const { data, stopFeed, feedImmediate, toHexUid } = useApi()
 
   // Safe access to state, defaulting to 'connecting...' if undefined
   const systemState = data.status?.state ? data.status.state.toLowerCase() : 'connecting...'
@@ -64,14 +64,14 @@ export function Dashboard() {
             return (
               <div key={tank.uid} className="bg-dark-surface rounded-xl p-3 border border-white/5">
                 <div className="flex justify-between items-start mb-2">
-                  <span className="text-[10px] bg-gray-700 rounded px-1.5 py-0.5 text-gray-300">#{tank.slot}</span>
+                  <span className="text-[10px] bg-gray-700 rounded px-1.5 py-0.5 text-gray-300">#{tank.busIndex}</span>
                   <span className="font-mono text-xs font-bold">{tank.remainingWeight}g</span>
                 </div>
                 <div className="mb-2">
                   <div className="text-sm font-semibold truncate leading-tight">{tank.name}</div>
-                  {/* Updated: Hex UID Subtitle */}
+                  {/* Hex UID Subtitle */}
                   <div className="text-[9px] font-mono text-gray-600 uppercase tracking-wide truncate">
-                    {tank.uid}
+                    {toHexUid(tank.uid)}
                   </div>
                 </div>
                 <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">

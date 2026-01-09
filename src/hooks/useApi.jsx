@@ -30,6 +30,12 @@ const getPosixTz = () => {
     }
 }
 
+// Convert a UID to uppercase hex string (handles both numeric and string inputs)
+const toHexUid = (uid) => {
+    if (typeof uid === 'string') return uid.toUpperCase()
+    return BigInt(uid).toString(16).toUpperCase().padStart(16, '0')
+}
+
 export function ApiProvider({ children }) {
   const [data, setData] = useState(createInitialState())
   const [loading, setLoading] = useState(false)
@@ -132,16 +138,18 @@ export function ApiProvider({ children }) {
   const value = {
     data, loading, error, apiCall,
     refreshStatus, refreshTanks, refreshRecipes, refreshScale,
+    toHexUid,
     
     feedImmediate: (tankUid, amount) => {
-        console.log(`🖱️ Action: Feed Immediate ${amount}g from ${tankUid}`);
-        return apiCall('/feed/immediate', {
-            method: 'POST', body: JSON.stringify({ tank_uid: tankUid, amount_grams: amount })
+        const hexUid = toHexUid(tankUid)
+        console.log(`🖱️ Action: Feed Immediate ${amount}g from ${hexUid}`);
+        return apiCall(`/feed/immediate/${hexUid}`, {
+            method: 'POST', body: JSON.stringify({ amount_grams: amount })
         });
     },
-    stopFeed: () => apiCall('/feed/stop', { method: 'POST' }),
-    updateTank: (uid, body) => apiCall(`/tanks/${uid}`, { method: 'POST', body: JSON.stringify(body) }).then(refreshTanks),
-    calibrateTank: (uid, pwm) => apiCall(`/tanks/${uid}/calibration`, { method: 'POST', body: JSON.stringify({ servo_idle_pwm: pwm }) }),
+    stopFeed: () => apiCall('/feeding/stop', { method: 'POST' }),
+    updateTank: (uid, body) => apiCall(`/tanks/${toHexUid(uid)}`, { method: 'PUT', body: JSON.stringify(body) }).then(refreshTanks),
+    calibrateTank: (uid, pwm) => apiCall(`/tanks/${toHexUid(uid)}/calibration`, { method: 'POST', body: JSON.stringify({ servo_idle_pwm: pwm }) }),
     updateRecipe: (recipe) => apiCall('/recipes', { method: 'POST', body: JSON.stringify(recipe) }).then(refreshRecipes),
     deleteRecipe: (id) => apiCall(`/recipes/${id}`, { method: 'DELETE' }).then(refreshRecipes),
     tareScale: () => apiCall('/scale/tare', { method: 'POST' }).then(refreshScale),

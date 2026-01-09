@@ -3,7 +3,7 @@ import { route } from 'preact-router'
 import { useApi } from '../hooks/useApi'
 
 export function Calibration() {
-  const { data, calibrateTank } = useApi()
+  const { data, calibrateTank, toHexUid } = useApi()
   // Store local PWM edits keyed by tank UID
   const [pwmValues, setPwmValues] = useState({})
 
@@ -43,11 +43,11 @@ export function Calibration() {
                 <div className="mb-4 border-b border-white/5 pb-2">
                   <div className="flex justify-between items-start">
                     <h3 className="text-lg font-bold text-white">{tank.name}</h3>
-                    <span className="text-xs bg-dark-surface px-2 py-1 rounded text-gray-400">Slot {tank.slot}</span>
+                    <span className="text-xs bg-dark-surface px-2 py-1 rounded text-gray-400">Slot {tank.busIndex}</span>
                   </div>
-                  {/* UID Subtitle */}
+                  {/* Hex UID Subtitle */}
                   <div className="text-[10px] font-mono text-gray-600 uppercase tracking-widest mt-1">
-                    UID: {tank.uid}
+                    UID: {toHexUid(tank.uid)}
                   </div>
                 </div>
 
