@@ -39,11 +39,15 @@ export function Dashboard() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-4">
-        <button onClick={stopFeed} className="btn btn-danger h-16 text-lg">
-          🛑 STOP
-        </button>
-        <button 
-          onClick={() => data.tanks?.[0] && feedImmediate(data.tanks[0].uid, 20)} 
+        {systemState === 'feeding' || systemState === 'dispensing' ? (
+          <button onClick={stopFeed} className="btn btn-danger h-16 text-lg">
+            🛑 STOP
+          </button>
+        ) : (
+          <div /> /* Empty placeholder to maintain grid layout */
+        )}
+        <button
+          onClick={() => data.tanks?.[0] && feedImmediate(data.tanks[0].uid, 20)}
           className="btn btn-primary h-16 text-lg"
           disabled={!data.tanks?.length}
         >
@@ -56,7 +60,8 @@ export function Dashboard() {
         <div className="heading-section">Tank Levels</div>
         <div className="grid grid-cols-2 gap-3">
           {(data.tanks || []).map(tank => {
-            const pct = Math.min(100, (tank.remainingWeight / tank.capacity) * 100)
+            const maxCapacityGrams = tank.capacity * tank.density * 1000
+            const pct = Math.min(100, (tank.remainingWeight / maxCapacityGrams) * 100)
             let barColor = 'bg-tank-full'
             if (pct < 15) barColor = 'bg-tank-low'
             else if (pct < 40) barColor = 'bg-tank-medium'
@@ -65,7 +70,7 @@ export function Dashboard() {
               <div key={tank.uid} className="bg-dark-surface rounded-xl p-3 border border-white/5">
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-[10px] bg-gray-700 rounded px-1.5 py-0.5 text-gray-300">#{tank.busIndex}</span>
-                  <span className="font-mono text-xs font-bold">{tank.remainingWeight}g</span>
+                  <span className="font-mono text-xs font-bold">{Number(tank.remainingWeight).toFixed(0)}g</span>
                 </div>
                 <div className="mb-2">
                   <div className="text-sm font-semibold truncate leading-tight">{tank.name}</div>
