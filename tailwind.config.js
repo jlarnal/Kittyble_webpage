@@ -30,6 +30,19 @@ export default {
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'glimmer': 'glimmer 2s ease-in-out infinite',
+      },
+      keyframes: {
+        glimmer: {
+          '0%, 100%': {
+            borderColor: 'rgba(34, 211, 238, 0.3)',
+            boxShadow: '0 0 5px rgba(34, 211, 238, 0.2)'
+          },
+          '50%': {
+            borderColor: 'rgba(34, 211, 238, 0.8)',
+            boxShadow: '0 0 15px rgba(34, 211, 238, 0.5)'
+          },
+        }
       }
     },
   },
