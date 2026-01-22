@@ -1,11 +1,14 @@
 import { route } from 'preact-router'
+import { useI18n } from '../i18n/I18nProvider'
 
 export function Navigation({ currentUrl }) {
+  const { t } = useI18n()
+
   const navs = [
-    { path: '/', label: 'Home', icon: '🏠' },
-    { path: '/tanks', label: 'Tanks', icon: '🥫' },
-    { path: '/recipes', label: 'Recipes', icon: '📜' },
-    { path: '/settings', label: 'Settings', icon: '⚙️' },
+    { path: '/', labelKey: 'nav.home', icon: 'home.svg' },
+    { path: '/tanks', labelKey: 'nav.tanks', icon: 'kibbles.svg' },
+    { path: '/recipes', labelKey: 'nav.recipes', icon: 'recipes.svg' },
+    { path: '/settings', labelKey: 'nav.settings', icon: 'settings.svg' },
   ]
 
   return (
@@ -14,13 +17,13 @@ export function Navigation({ currentUrl }) {
         {navs.map(item => {
           const active = currentUrl === item.path
           return (
-            <button 
+            <button
               key={item.path}
               onClick={() => route(item.path)}
               className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${active ? 'text-accent-primary' : 'text-gray-500'}`}
             >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <img src={item.icon} alt={t(item.labelKey)} className={`w-8 h-8 transition-opacity ${active ? 'opacity-100' : 'opacity-50'}`} />
+              <span className="text-[16px] font-medium">{t(item.labelKey)}</span>
               {active && <div className="absolute top-0 w-8 h-0.5 bg-accent-primary rounded-b-full" />}
             </button>
           )

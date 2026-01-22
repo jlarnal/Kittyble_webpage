@@ -12,7 +12,7 @@ const createInitialState = () => {
     status: { battery: 0, state: "CONNECTING", error: "" },
     tanks: [],
     recipes: [],
-    scale: { weight_g: 0.0 }
+    scale: { weight: 0.0 }
   }
 }
 
@@ -40,7 +40,9 @@ export function ApiProvider({ children }) {
   const [data, setData] = useState(createInitialState())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  
+  const [feedingProgress, setFeedingProgress] = useState(null) // { weight, target } during active feeding
+  const [sseConnected, setSseConnected] = useState(false)
+
   // Ref pattern to prevent stale closures in async callbacks
   const dataRef = useRef(data);
   useEffect(() => { dataRef.current = data; }, [data]);
@@ -135,23 +137,105 @@ export function ApiProvider({ children }) {
     return () => { mounted = false; };
   }, [apiCall, refreshStatus, refreshTanks, refreshRecipes]);
 
+  // 4. SERVER-SENT EVENTS (SSE) CONNECTION
+  useEffect(() => {
+    let eventSource = null
+    let reconnectTimeout = null
+
+    const connect = () => {
+      // Use relative URL - works with both dev proxy and production
+      eventSource = new EventSource('/api/events')
+
+      eventSource.onopen = () => {
+        console.log('🔌 SSE Connected')
+        setSseConnected(true)
+      }
+
+      eventSource.onerror = (e) => {
+        console.warn('⚠️ SSE Error/Disconnected', e)
+        setSseConnected(false)
+        // EventSource auto-reconnects, but we track the state
+      }
+
+      // Tank population changed (connect/disconnect)
+      eventSource.addEventListener('tanks_changed', () => {
+        console.log('📡 SSE: tanks_changed')
+        refreshTanks().catch(e => console.warn('SSE refresh tanks failed', e))
+      })
+
+      // System state transition
+      eventSource.addEventListener('status_changed', (e) => {
+        console.log('📡 SSE: status_changed', e.data)
+        refreshStatus().catch(e => console.warn('SSE refresh status failed', e))
+      })
+
+      // Feeding progress update
+      eventSource.addEventListener('feeding_progress', (e) => {
+        try {
+          const { weight, target } = JSON.parse(e.data)
+          setFeedingProgress({ weight, target })
+        } catch (err) {
+          console.warn('SSE feeding_progress parse error', err)
+        }
+      })
+
+      // Feeding completed
+      eventSource.addEventListener('feeding_complete', (e) => {
+        console.log('📡 SSE: feeding_complete', e.data)
+        setFeedingProgress(null)
+        refreshStatus().catch(e => console.warn('SSE refresh status failed', e))
+      })
+
+      // Error event from server
+      eventSource.addEventListener('error_event', (e) => {
+        try {
+          const { code, message } = JSON.parse(e.data)
+          console.error(`📡 SSE: error - ${code}: ${message}`)
+          setError(message)
+          refreshStatus().catch(e => console.warn('SSE refresh status failed', e))
+        } catch (err) {
+          console.warn('SSE error_event parse error', err)
+        }
+      })
+    }
+
+    connect()
+
+    return () => {
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      if (eventSource) {
+        eventSource.close()
+        console.log('🔌 SSE Disconnected (cleanup)')
+      }
+    }
+  }, [refreshTanks, refreshStatus])
+
   const value = {
     data, loading, error, apiCall,
     refreshStatus, refreshTanks, refreshRecipes, refreshScale,
     toHexUid,
+    // SSE state
+    feedingProgress,  // { weight, target } during active feeding, null otherwise
+    sseConnected,     // true when SSE connection is established
     
     feedImmediate: (tankUid, amount) => {
         const hexUid = toHexUid(tankUid)
         console.log(`🖱️ Action: Feed Immediate ${amount}g from ${hexUid}`);
         return apiCall(`/feed/immediate/${hexUid}`, {
-            method: 'POST', body: JSON.stringify({ amount_grams: amount })
+            method: 'POST', body: JSON.stringify({ amountGrams: amount })
         });
     },
     stopFeed: () => apiCall('/feeding/stop', { method: 'POST' }),
     updateTank: (uid, body) => apiCall(`/tanks/${toHexUid(uid)}`, { method: 'PUT', body: JSON.stringify(body) }).then(refreshTanks),
-    calibrateTank: (uid, pwm) => apiCall(`/tanks/${toHexUid(uid)}/calibration`, { method: 'POST', body: JSON.stringify({ servo_idle_pwm: pwm }) }),
-    updateRecipe: (recipe) => apiCall('/recipes', { method: 'POST', body: JSON.stringify(recipe) }).then(refreshRecipes),
-    deleteRecipe: (id) => apiCall(`/recipes/${id}`, { method: 'DELETE' }).then(refreshRecipes),
+    calibrateTank: (uid, pwm) => apiCall(`/tanks/${toHexUid(uid)}/calibration`, { method: 'POST', body: JSON.stringify({ servoIdlePwm: pwm }) }),
+    updateRecipe: (recipe) => {
+      // New recipes (no uid) use POST, existing recipes use PUT with uid
+      if (recipe.uid) {
+        return apiCall(`/recipes/${recipe.uid}`, { method: 'PUT', body: JSON.stringify(recipe) }).then(refreshRecipes)
+      }
+      return apiCall('/recipes', { method: 'POST', body: JSON.stringify(recipe) }).then(refreshRecipes)
+    },
+    deleteRecipe: (uid) => apiCall(`/recipes/${uid}`, { method: 'DELETE' }).then(refreshRecipes),
     tareScale: () => apiCall('/scale/tare', { method: 'POST' }).then(refreshScale),
     scanWifi: () => apiCall('/wifi/scan'),
     connectWifi: (ssid, pass) => apiCall('/wifi/connect', { method: 'POST', body: JSON.stringify({ ssid, password: pass }) }),

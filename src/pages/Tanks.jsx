@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'preact/hooks'
 import { useApi } from '../hooks/useApi'
+import { useI18n } from '../i18n/I18nProvider'
 
 // Check if tank has valid configuration (density and capacity > 0)
 const isTankConfigured = (tank) => tank.capacity > 0 && tank.density > 0
@@ -42,20 +43,20 @@ const REFILL_AMOUNTS_LITERS = [
 ]
 
 // Refill Amount Selection Modal
-function RefillModal({ tank, onSelect, onClose }) {
+function RefillModal({ tank, onSelect, onClose, t }) {
   const [customValue, setCustomValue] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
   const [unit, setUnit] = useState('g') // 'g' for grams, 'L' for liters
   const [mode, setMode] = useState('add') // 'add' or 'set'
 
-  // Compute max capacity in grams (density is in kg/L, so multiply by 1000)
-  const maxCapacityGrams = tank.capacity * tank.density * 1000
-  const currentWeight = tank.remainingWeight || 0
+  // Compute max capacity in grams (capacity in L, density in g/L)
+  const maxCapacityGrams = tank.capacity * tank.density
+  const currentWeight = tank.remainingWeightGrams || 0
   const remainingSpace = Math.max(0, maxCapacityGrams - currentWeight)
 
-  // Convert grams to liters for display
-  const gramsToLiters = (g) => g / (tank.density * 1000)
-  const litersToGrams = (l) => l * tank.density * 1000
+  // Convert grams to liters for display (density in g/L)
+  const gramsToLiters = (g) => g / tank.density
+  const litersToGrams = (l) => l * tank.density
 
   // Format value in current unit
   const formatValue = (grams) => {
@@ -97,9 +98,9 @@ function RefillModal({ tank, onSelect, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-dark-card rounded-2xl p-5 w-full max-w-sm animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-bold mb-1">Refill {tank.name}</h3>
+        <h3 className="text-lg font-bold mb-1">{t('tanks.refillTitle', { name: tank.name })}</h3>
         <p className="text-xs text-gray-400 mb-3">
-          Current: {formatValue(currentWeight)} · Max: {formatValue(maxCapacityGrams)} · Space: {formatValue(remainingSpace)}
+          {t('tanks.current')} {formatValue(currentWeight)} · {t('tanks.max')} {formatValue(maxCapacityGrams)} · {t('tanks.space')} {formatValue(remainingSpace)}
         </p>
 
         {/* Mode Toggle: ADD vs SET */}
@@ -112,7 +113,7 @@ function RefillModal({ tank, onSelect, onClose }) {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            Add to tank
+            {t('tanks.addToTank')}
           </button>
           <button
             onClick={() => setMode('set')}
@@ -122,7 +123,7 @@ function RefillModal({ tank, onSelect, onClose }) {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            Set value
+            {t('tanks.setValue')}
           </button>
         </div>
 
@@ -136,7 +137,7 @@ function RefillModal({ tank, onSelect, onClose }) {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            Grams (g)
+            {t('tanks.grams')}
           </button>
           <button
             onClick={() => { setUnit('L'); setCustomValue('') }}
@@ -146,7 +147,7 @@ function RefillModal({ tank, onSelect, onClose }) {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            Liters (L)
+            {t('tanks.liters')}
           </button>
         </div>
 
@@ -157,7 +158,7 @@ function RefillModal({ tank, onSelect, onClose }) {
               onClick={handleFillToMax}
               className="w-full mb-3 py-2.5 text-sm font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white transition-colors"
             >
-              Fill to max ({mode === 'add' ? formatValue(remainingSpace) : formatValue(maxCapacityGrams)})
+              {t('tanks.fillToMax', { value: mode === 'add' ? formatValue(remainingSpace) : formatValue(maxCapacityGrams) })}
             </button>
 
             <div className="grid grid-cols-3 gap-2 mb-3">
@@ -174,14 +175,14 @@ function RefillModal({ tank, onSelect, onClose }) {
                 onClick={() => setShowCustomInput(true)}
                 className="btn btn-secondary py-3 text-sm font-semibold bg-gray-700 hover:bg-gray-600 transition-colors"
               >
-                Custom
+                {t('tanks.custom')}
               </button>
             </div>
           </>
         ) : (
           <div className="space-y-3 mb-3">
             <div>
-              <label className="text-xs text-gray-400">Enter amount ({unit === 'g' ? 'grams' : 'liters'})</label>
+              <label className="text-xs text-gray-400">{t('tanks.enterAmount', { unit: unit === 'g' ? t('tanks.grams') : t('tanks.liters') })}</label>
               <input
                 type="number"
                 step={unit === 'L' ? '0.1' : '1'}
@@ -193,11 +194,11 @@ function RefillModal({ tank, onSelect, onClose }) {
               />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleCustomSubmit} className="btn btn-primary flex-1 py-2">
-                {mode === 'add' ? 'Add' : 'Set'} {customValue || '0'}{unit}
-              </button>
               <button onClick={() => setShowCustomInput(false)} className="btn btn-secondary flex-1 py-2">
-                Back
+                {t('tanks.back')}
+              </button>
+              <button onClick={handleCustomSubmit} className="btn btn-primary flex-1 py-2">
+                {mode === 'add' ? t('tanks.refill') : t('tanks.set')} {customValue || '0'}{unit}
               </button>
             </div>
           </div>
@@ -205,7 +206,7 @@ function RefillModal({ tank, onSelect, onClose }) {
 
         {!showCustomInput && (
           <button onClick={onClose} className="btn btn-secondary w-full py-2 mt-1">
-            Cancel
+            {t('tanks.cancel')}
           </button>
         )}
       </div>
@@ -214,9 +215,9 @@ function RefillModal({ tank, onSelect, onClose }) {
 }
 
 // Confirmation Modal
-function ConfirmModal({ tank, amount, mode, onConfirm, onCancel }) {
-  const currentWeight = tank.remainingWeight || 0
-  const maxCapacityGrams = tank.capacity * tank.density * 1000
+function ConfirmModal({ tank, amount, mode, onConfirm, onCancel, t }) {
+  const currentWeight = tank.remainingWeightGrams || 0
+  const maxCapacityGrams = tank.capacity * tank.density
 
   // Calculate new weight based on mode
   const newWeight = mode === 'add' ? currentWeight + amount : amount
@@ -227,43 +228,43 @@ function ConfirmModal({ tank, amount, mode, onConfirm, onCancel }) {
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onCancel}>
       <div className="bg-dark-card rounded-2xl p-5 w-full max-w-sm animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
         <h3 className="text-lg font-bold mb-3">
-          {isAddMode ? 'Confirm Refill' : 'Confirm Set Value'}
+          {isAddMode ? t('tanks.confirmRefill') : t('tanks.confirmSetValue')}
         </h3>
 
         <div className="bg-dark-surface rounded-xl p-4 mb-4 space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-gray-400">Tank</span>
+            <span className="text-gray-400">{t('tanks.tank')}</span>
             <span className="font-semibold">{tank.name}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">{isAddMode ? 'Adding' : 'Setting to'}</span>
+            <span className="text-gray-400">{isAddMode ? t('tanks.adding') : t('tanks.settingTo')}</span>
             <span className={`font-mono ${isAddMode ? 'text-accent-primary' : 'text-orange-400'}`}>
               {isAddMode ? '+' : ''}{Number(amount).toFixed(0)}g
             </span>
           </div>
           <div className="border-t border-gray-700 pt-2 flex justify-between">
-            <span className="text-gray-400">Current</span>
+            <span className="text-gray-400">{t('tanks.current').replace(':', '')}</span>
             <span className="font-mono">{Number(currentWeight).toFixed(0)}g</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">New total</span>
+            <span className="text-gray-400">{t('tanks.newTotal')}</span>
             <span className={`font-mono font-bold ${wouldOverflow ? 'text-tank-low' : 'text-tank-full'}`}>
               {Number(newWeight).toFixed(0)}g
             </span>
           </div>
           {wouldOverflow && (
             <div className="text-xs text-tank-low mt-2">
-              Warning: This exceeds tank capacity ({Number(maxCapacityGrams).toFixed(0)}g). The value will be capped.
+              {t('tanks.overflowWarning', { max: Number(maxCapacityGrams).toFixed(0) })}
             </div>
           )}
         </div>
 
         <div className="flex gap-2">
-          <button onClick={onConfirm} className="btn btn-primary flex-1 py-3 font-semibold">
-            Yes, {isAddMode ? 'Refill' : 'Set'}
-          </button>
           <button onClick={onCancel} className="btn btn-secondary flex-1 py-3">
-            No, Cancel
+            {t('tanks.cancel')}
+          </button>
+          <button onClick={onConfirm} className="btn btn-primary flex-1 py-3 font-semibold">
+            {isAddMode ? t('tanks.refill') : t('tanks.set')}
           </button>
         </div>
       </div>
@@ -276,6 +277,7 @@ const AUTO_EDIT_KEY = 'kittyble_auto_edit_tank'
 
 export function Tanks() {
   const { data, updateTank, toHexUid } = useApi()
+  const { t } = useI18n()
   const [editing, setEditing] = useState(null)
   const [refillTank, setRefillTank] = useState(null)
   const [confirmRefill, setConfirmRefill] = useState(null) // { tank, amount, mode }
@@ -313,7 +315,7 @@ export function Tanks() {
     // Validate name is not empty
     const trimmedName = (form.name || '').trim()
     if (!trimmedName) {
-      setValidationError('Tank name cannot be empty')
+      setValidationError(t('tanks.nameRequired'))
       return
     }
 
@@ -339,21 +341,21 @@ export function Tanks() {
 
   const handleConfirmRefill = async () => {
     const { tank, amount, mode } = confirmRefill
-    const maxCapacityGrams = tank.capacity * tank.density * 1000
-    const currentWeight = tank.remainingWeight || 0
+    const maxCapacityGrams = tank.capacity * tank.density
+    const currentWeight = tank.remainingWeightGrams || 0
 
     // Calculate new weight based on mode
     const rawNewWeight = mode === 'add' ? currentWeight + amount : amount
     const newWeight = Math.min(rawNewWeight, maxCapacityGrams)
 
-    await updateTank(tank.uid, { remainingWeight: Math.round(newWeight) })
+    await updateTank(tank.uid, { remainingWeightGrams: Math.round(newWeight) })
     setConfirmRefill(null)
   }
 
   return (
     <div className="p-4 pb-20 space-y-4">
-      <h2 className="text-2xl font-bold">Tank Manager</h2>
-      
+      <h2 className="text-2xl font-bold">{t('tanks.title')}</h2>
+
       {data.tanks.map(tank => {
         const configured = isTankConfigured(tank)
         const isEditing = editing === tank.uid
@@ -362,26 +364,26 @@ export function Tanks() {
           <div key={tank.uid} className={`card ${isEditing ? 'border-2 animate-glimmer' : ''}`}>
             <div className="flex justify-between items-start mb-3">
                <div className="flex items-center gap-2">
-                  <span className="text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-300">Slot {tank.busIndex}</span>
+                  <span className="text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-300">{t('tanks.slot', { index: tank.busIndex })}</span>
                   {!configured && (
-                    <span className="text-xs bg-orange-600/80 px-2 py-0.5 rounded text-white">Not configured</span>
+                    <span className="text-xs bg-orange-600/80 px-2 py-0.5 rounded text-white">{t('tanks.notConfigured')}</span>
                   )}
                </div>
                {!isEditing && (
-                   <button onClick={() => startEdit(tank)} className="text-accent-primary text-sm font-semibold">Edit</button>
+                   <button onClick={() => startEdit(tank)} className="text-accent-primary text-sm font-semibold">{t('tanks.edit')}</button>
                )}
             </div>
 
             {isEditing ? (
               <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
                 <div>
-                  <label className="text-xs text-gray-400">Name</label>
+                  <label className="text-xs text-gray-400">{t('tanks.name')}</label>
                   <input
                     className={`input ${validationError && !form.name?.trim() ? 'border-red-500' : ''}`}
                     value={form.name}
                     onInput={e => { setForm({...form, name: e.target.value}); setValidationError(null) }}
                     maxLength={43}
-                    placeholder="Enter tank name"
+                    placeholder={t('tanks.enterName')}
                   />
                 </div>
                 {/* UID Display in Edit Mode */}
@@ -389,11 +391,11 @@ export function Tanks() {
                   UID: {toHexUid(tank.uid)}
                 </div>
                 <div>
-                   <label className="text-xs text-gray-400">Density (kg/L)</label>
-                   <input type="number" step="0.001" className="input" value={form.density} onInput={e => setForm({...form, density: e.target.value})} placeholder="e.g. 0.55" />
+                   <label className="text-xs text-gray-400">{t('tanks.density')}</label>
+                   <input type="number" step="1" className="input" value={form.density} onInput={e => setForm({...form, density: e.target.value})} placeholder="e.g. 550" />
                 </div>
                 <div>
-                   <label className="text-xs text-gray-400">Capacity (L)</label>
+                   <label className="text-xs text-gray-400">{t('tanks.capacity')}</label>
                    <input type="number" step="0.1" className="input" value={form.capacity} onInput={e => setForm({...form, capacity: e.target.value})} placeholder="e.g. 2.5" />
                 </div>
                 {validationError && (
@@ -402,20 +404,20 @@ export function Tanks() {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <button onClick={save} className="btn btn-primary flex-1 py-2">Save</button>
-                  <button onClick={() => { setEditing(null); setValidationError(null) }} className="btn btn-secondary flex-1 py-2">Cancel</button>
+                  <button onClick={() => { setEditing(null); setValidationError(null) }} className="btn btn-secondary flex-1 py-2">{t('tanks.cancel')}</button>
+                  <button onClick={save} className="btn btn-primary flex-1 py-2">{t('tanks.save')}</button>
                 </div>
               </div>
             ) : (
               <div>
                  <div className="flex items-center gap-2 mb-1">
-                   <h3 className="text-lg font-bold leading-tight">{tank.name || 'Unnamed Tank'}</h3>
+                   <h3 className="text-lg font-bold leading-tight">{tank.name || t('tanks.unnamedTank')}</h3>
                    {configured && (
                      <button
                        onClick={() => setRefillTank(tank)}
                        className="text-xs font-semibold px-2 py-0.5 rounded bg-green-600 hover:bg-green-500 text-white transition-colors"
                      >
-                       Refill
+                       {t('tanks.refill')}
                      </button>
                    )}
                  </div>
@@ -427,17 +429,17 @@ export function Tanks() {
                  {configured ? (
                    <div className="grid grid-cols-2 gap-2 text-xs">
                      <div className="bg-dark-surface p-2 rounded">
-                        <span className="text-gray-500 block">Density</span>
-                        <span className="font-mono text-white">{Number(tank.density).toFixed(3)} kg/L</span>
+                        <span className="text-gray-500 block">{t('tanks.densityLabel')}</span>
+                        <span className="font-mono text-white">{Number(tank.density).toFixed(0)} g/L</span>
                      </div>
                      <div className="bg-dark-surface p-2 rounded">
-                        <span className="text-gray-500 block">Capacity</span>
-                        <span className="font-mono text-white">{Number(tank.capacity).toFixed(3)} L</span>
+                        <span className="text-gray-500 block">{t('tanks.capacityLabel')}</span>
+                        <span className="font-mono text-white">{Number(tank.capacity).toFixed(1)} L</span>
                      </div>
                    </div>
                  ) : (
                    <div className="text-sm text-gray-500 italic bg-dark-surface rounded p-3">
-                     Set density and capacity to enable this tank
+                     {t('tanks.enableHint')}
                    </div>
                  )}
               </div>
@@ -452,6 +454,7 @@ export function Tanks() {
           tank={refillTank}
           onSelect={handleRefillSelect}
           onClose={() => setRefillTank(null)}
+          t={t}
         />
       )}
 
@@ -463,6 +466,7 @@ export function Tanks() {
           mode={confirmRefill.mode}
           onConfirm={handleConfirmRefill}
           onCancel={() => setConfirmRefill(null)}
+          t={t}
         />
       )}
 

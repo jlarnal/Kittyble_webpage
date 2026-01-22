@@ -151,7 +151,7 @@ interface Tank {
   name: string           // Display name (max 43 characters)
   density: number        // Kibble density in kg/L
   capacity: number       // Tank volume in Liters
-  remainingWeight: number // Current contents in grams
+  remainingWeightGrams: number // Current contents in grams
 }
 ```
 
@@ -160,7 +160,7 @@ interface Tank {
 **Weight Calculations**:
 ```javascript
 maxCapacityGrams = capacity * density * 1000
-fillPercentage = (remainingWeight / maxCapacityGrams) * 100
+fillPercentage = (remainingWeightGrams / maxCapacityGrams) * 100
 ```
 
 ### 5.3 Recipe
@@ -209,7 +209,7 @@ All endpoints are prefixed with `/api`.
 | Endpoint | Method | Description | Payload |
 |----------|--------|-------------|---------|
 | `/tanks` | GET | List all tanks | - |
-| `/tanks/{hexUid}` | PUT | Update tank | `{name?, density?, capacity?, remainingWeight?}` |
+| `/tanks/{hexUid}` | PUT | Update tank | `{name?, density?, capacity?, remainingWeightGrams?}` |
 | `/tanks/{hexUid}/calibration` | POST | Set servo PWM | `{servo_idle_pwm: number}` |
 
 ### 6.3 Feeding
@@ -240,6 +240,49 @@ All endpoints are prefixed with `/api`.
 |----------|--------|-------------|---------|
 | `/wifi/scan` | GET | Scan networks | - |
 | `/wifi/connect` | POST | Connect to network | `{ssid: string, password: string}` |
+
+### 6.7 Server-Sent Events (SSE)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/events` | GET | SSE stream for real-time push notifications |
+
+The client subscribes to server-initiated events via `EventSource`. This enables real-time updates without polling.
+
+**Event Types**:
+
+| Event | Description | Action |
+|-------|-------------|--------|
+| `tanks_changed` | Tank connected/disconnected | Call `refreshTanks()` |
+| `status_changed` | System state transition | Call `refreshStatus()` |
+| `feeding_progress` | Weight update during feeding | Update progress UI |
+| `feeding_complete` | Feeding operation finished | Refresh status, show notification |
+| `error` | Error condition detected | Display error in Header |
+
+**Client Implementation** (in `useApi.jsx`):
+
+```javascript
+useEffect(() => {
+  const eventSource = new EventSource('/api/events')
+
+  eventSource.addEventListener('tanks_changed', () => refreshTanks())
+  eventSource.addEventListener('status_changed', () => refreshStatus())
+  eventSource.addEventListener('feeding_progress', (e) => {
+    const { weight, target } = JSON.parse(e.data)
+    // Update feeding progress UI
+  })
+  eventSource.addEventListener('error', (e) => {
+    const { code, message } = JSON.parse(e.data)
+    // Display error
+  })
+
+  eventSource.onerror = () => {
+    // Reconnect logic (EventSource auto-reconnects)
+  }
+
+  return () => eventSource.close()
+}, [])
+```
 
 ---
 
@@ -461,9 +504,19 @@ Two-step refill workflow.
 1. Attempt extended time sync with POSIX timezone
 2. Fallback to simple epoch sync if unsupported
 3. Load status, tanks, and recipes in parallel
-4. Continue even if time sync fails
+4. Establish SSE connection to `/api/events`
+5. Continue even if time sync fails
 
-### 10.3 Local Storage Keys
+### 10.3 Real-Time Updates (SSE)
+
+The `useApi` hook maintains a persistent `EventSource` connection to receive server-initiated updates:
+
+- **Connection lifecycle**: Opens on mount, closes on unmount
+- **Auto-reconnect**: `EventSource` automatically reconnects on disconnect
+- **Event handling**: Each event type triggers the appropriate refresh method
+- **State synchronization**: Tank population and system status stay current without polling
+
+### 10.4 Local Storage Keys
 
 | Key | Purpose |
 |-----|---------|
